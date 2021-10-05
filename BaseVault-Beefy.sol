@@ -1072,20 +1072,11 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     address constant public gnosisWallet = 0x2569c0423B69Ab70250D5B2Fc66803195Cb54AcD;
 
-    struct StratCandidate {
-        address implementation;
-        uint proposedTime;
-    }
 
-    // The last proposed strategy to switch to.
-    StratCandidate public stratCandidate;
+
     // The strategy currently in use by the vault.
     IStrategy public strategy;
-    // The minimum time it has to pass before a strat candidate can be approved.
-    uint256 public immutable approvalDelay;
 
-    event NewStratCandidate(address implementation);
-    event UpgradeStrat(address implementation);
 
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -1095,19 +1086,16 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
      * @param _strategy the address of the strategy.
      * @param _name the name of the vault token.
      * @param _symbol the symbol of the vault token.
-     * @param _approvalDelay the delay before a new strat can be approved.
      */
     constructor (
         IStrategy _strategy,
         string memory _name,
-        string memory _symbol,
-        uint256 _approvalDelay
+        string memory _symbol
     ) public ERC20(
         _name,
         _symbol
     ) {
         strategy = _strategy;
-        approvalDelay = _approvalDelay;
     }
 
     function input() public view returns (IERC20) {
@@ -1212,39 +1200,6 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         input().safeTransfer(msg.sender, r);
     }
 
-    /** 
-     * @dev Sets the candidate for the new strat to use with this vault.
-     * @param _implementation The address of the candidate strategy.  
-     */
-    function proposeStrat(address _implementation) public onlyOwner {
-        require(address(this) == IStrategy(_implementation).vault(), "Proposal not valid for this Vault");
-        stratCandidate = StratCandidate({
-            implementation: _implementation,
-            proposedTime: block.timestamp
-         });
-
-        emit NewStratCandidate(_implementation);
-    }
-
-    /** 
-     * @dev It switches the active strat for the strat candidate. After upgrading, the 
-     * candidate implementation is set to the 0x00 address, and proposedTime to a time 
-     * happening in +100 years for safety. 
-     */
-
-    function upgradeStrat() public onlyOwner {
-        require(stratCandidate.implementation != address(0), "There is no candidate");
-        require(stratCandidate.proposedTime.add(approvalDelay) < block.timestamp, "Delay has not passed");
-
-        emit UpgradeStrat(stratCandidate.implementation);
-
-        strategy.retireStrat();
-        strategy = IStrategy(stratCandidate.implementation);
-        stratCandidate.implementation = address(0);
-        stratCandidate.proposedTime = 5000000000;
-
-        earn();
-    }
 
     /**
      * @dev Rescues random funds stuck that the strat can't handle.
