@@ -1173,6 +1173,12 @@ contract StratManager is Ownable, Pausable {
     address public unirouter;
     address public vault;
     address public harvester;
+    event StratSetHarvester(address indexed _StratSetHarvester);
+    event StratSetKeeper(address indexed _StratSetKeeper);
+    event StratSetStrategist(address indexed _setStrategist);
+    event StratSetVault(address indexed _setVault);
+    
+    
 
     /**
      * @dev Initializes the base strategy.
@@ -1204,6 +1210,7 @@ contract StratManager is Ownable, Pausable {
     function setHarvester(address _harvester) external onlyManager {
         require(_harvester != address(0), "Harvester cannot be zero address");
         harvester = _harvester;
+        emit StratSetHarvester(_harvester);
     }
 
 
@@ -1214,6 +1221,8 @@ contract StratManager is Ownable, Pausable {
     function setKeeper(address _keeper) external onlyManager {
         require(_keeper != address(0), "Keeper cannot be zero address");
         keeper = _keeper;
+        emit StratSetKeeper(_keeper);
+
     }
 
     /**
@@ -1226,18 +1235,10 @@ contract StratManager is Ownable, Pausable {
         //Transferring to the zero address breaks the transfer function.    
         require(_strategist != address(0), "Strategist cannot be the zero address");
         strategist = _strategist;
+        emit StratSetStrategist(_strategist);
     }
 
-    /**
-     * @dev Updates router that will be used for swaps.
-     * @param _unirouter new unirouter address.
-     */
-    function setUnirouter(address _unirouter) external onlyOwner {
-        
-        //Using the zero address as the router will break the swaps.
-        require(_unirouter != address(0), "Router cannot be the zero address");
-        unirouter = _unirouter;
-    }
+
 
     /**
      * @dev Updates parent vault.
@@ -1247,6 +1248,7 @@ contract StratManager is Ownable, Pausable {
         require(_vault != address(0), "Vault cannot be the zero address");
         require(vault == address(0), "Vault already initialized");
         vault = _vault;
+        emit StratSetVault(_vault);
     }
 
  
@@ -1263,27 +1265,36 @@ pragma solidity ^0.6.12;
 abstract contract FeeManager is StratManager {
     uint public STRATEGIST_FEE = 500;
     uint constant public MAX_FEE = 600;
+    event feeChange(address indexed  _manager, uint indexed _newFee);
+
+    
+    function setStrategistFee(uint _fee) external onlyManager{
+        require(_fee <= MAX_FEE,"Must be less than MAX_FEE");
+        STRATEGIST_FEE = _fee;
+        emit feeChange(msg.sender,_fee);
+    }
 
 }
 
 
 pragma solidity ^0.6.0;
 
-contract StrategyDfynRouterLP is StratManager, FeeManager {
+contract StrategyLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address public output;
-    address public usdc;
-    address public output2;
-    address public wmatic;
-    address public input;
+    address constant public output = 0xC168E40227E4ebD8C1caE80F7a55a4F0e6D66C97; // dfyn
+    address constant public usdc=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; // USDC;
+    address constant public output2 = 0x16ECCfDbb4eE1A85A33f3A9B21175Cd7Ae753dB4; //route
+    address constant public wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270; // WMATIC;
+    address constant public input = 0xB0dc320ea9eea823a150763AbB4A7bA8286Cd08B;
+
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address public masterchef;
+    address constant public masterchef = 0xe194f2cB4da23B1FB26B41Eb818d25d9FC7367f2; // dfyn Masterchef
     uint256 public poolId;
 
     // Routes
@@ -1300,17 +1311,16 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
      * @dev Event that is fired each time someone harvests the strat.
      */
     event StratHarvest(address indexed harvester);
+    event StratHarvestFromMangager(address indexed _StratHarvestFromMangager);
+    event StratHarvestOnDeposit(bool indexed _harvestOnDeposit);
+    event StratPanic(address indexed _panic);
+
+
 
     constructor() public {
     
-        input = 0xB0dc320ea9eea823a150763AbB4A7bA8286Cd08B; // dfyn double pair
-        output = 0xC168E40227E4ebD8C1caE80F7a55a4F0e6D66C97; // dfyn
-        output2 = 0x16ECCfDbb4eE1A85A33f3A9B21175Cd7Ae753dB4; //route
-        usdc = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; // USDC
-        wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270; // WMATIC
-        unirouter = 0xA102072A4C07F06EC3B4900FDC4C7B80b6c57429; //dfyn
-        masterchef = 0xe194f2cB4da23B1FB26B41Eb818d25d9FC7367f2; // dfyn Masterchef
 
+        unirouter = 0xA102072A4C07F06EC3B4900FDC4C7B80b6c57429; //dfyn
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
     
@@ -1322,11 +1332,11 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
         
         outputToLp0Route = new address[](2);
         outputToLp0Route[0]= output;
-        outputToLp0Route[1]= output2;
+        outputToLp0Route[1]= lpToken0;
         
         outputToLp1Route = new address[](2);
         outputToLp1Route[0]= output;
-        outputToLp1Route[1]= output2;
+        outputToLp1Route[1]= lpToken1;
 
 
         secondOutputToOutputRoute = new address[](2);
@@ -1334,11 +1344,6 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
         secondOutputToOutputRoute[1] = output;
 
         _giveAllowances();
-    }
-
-    function setfee(uint _fee) external onlyManager{
-        require(_fee < MAX_FEE,"Must be less than MAX_FEE");
-        STRATEGIST_FEE = _fee;
     }
 
     // puts the funds to work
@@ -1363,12 +1368,6 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
         if (wantBal > _amount) {
             wantBal = _amount;
         }
-
-        if (tx.origin == owner() || paused()) {
-            IERC20(input).safeTransfer(vault, wantBal);
-        } else {
-            IERC20(input).safeTransfer(vault, wantBal); 
-        }
     }
 
     function beforeDeposit() external override {
@@ -1384,6 +1383,8 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
 
     function managerHarvest() external onlyManager {
         _harvest();
+        emit StratHarvestFromMangager(msg.sender);
+
     }
 
     // compounds earnings and charges performance fee
@@ -1402,14 +1403,11 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
 
     // performance fees
     function chargeFees() internal {
-        uint256 toOutput = IERC20(output2).balanceOf(address(this));
-        if (toOutput > 0) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toOutput, 0, secondOutputToOutputRoute, address(this), now);
-        }
+
         
         uint256 toUsdc = IERC20(output).balanceOf(address(this)).mul(STRATEGIST_FEE).div(10000);
         
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
  
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         IERC20(usdc).safeTransfer(strategist, usdcBal);
@@ -1420,11 +1418,11 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf,0, outputToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf,0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf,0, outputToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf,0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -1450,22 +1448,15 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
+        emit StratHarvestOnDeposit(_harvestOnDeposit);
     }
 
-    // called as part of strat migration. Sends all the available funds back to the vault.
-    function retireStrat() external {
-        require(msg.sender == vault, "!vault");
-
-        IStakingRewards(masterchef).withdraw(balanceOfPool());
-
-        uint256 wantBal = IERC20(input).balanceOf(address(this));
-        IERC20(input).transfer(vault, wantBal);
-    }
 
     // pauses deposits and withdraws all funds from third party systems.
-    function panic() public onlyManager {
+    function panic() external onlyManager {
         pause();
         IStakingRewards(masterchef).withdraw(balanceOfPool());
+        emit StratPanic(msg.sender);
     }
 
     function pause() public onlyManager {
@@ -1512,6 +1503,22 @@ contract StrategyDfynRouterLP is StratManager, FeeManager {
 
     function outputToLp1() external view returns(address[] memory) {
         return outputToLp1Route;
+    }
+    function convertDust() external onlyManager{
+    uint256 lptoken0Dust = IERC20(lpToken0).balanceOf(address(this));
+    uint256 lptoken1Dust = IERC20(lpToken1).balanceOf(address(this));
+    if (lptoken0Dust>0){
+        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(lptoken0Dust,0, outputToUsdcRoute, address(this), now);
+ 
+        uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
+        IERC20(usdc).safeTransfer(strategist, usdcBal);
+    }
+        if (lptoken1Dust>0){
+        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(lptoken1Dust,0, outputToUsdcRoute, address(this), now);
+ 
+        uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
+        IERC20(usdc).safeTransfer(strategist, usdcBal);
+    }
     }
     
 
