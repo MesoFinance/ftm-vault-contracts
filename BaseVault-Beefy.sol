@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
+
 // File: @openzeppelin/contracts/utils/Context.sol
-
-
 pragma solidity >=0.6.0 <0.8.0;
 
 /*
@@ -25,9 +24,8 @@ abstract contract Context {
     }
 }
 
+
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
-
-
 pragma solidity >=0.6.0 <0.8.0;
 
 /**
@@ -105,8 +103,6 @@ interface IERC20 {
 }
 
 // File: @openzeppelin/contracts/math/SafeMath.sol
-
-
 pragma solidity >=0.6.0 <0.8.0;
 
 /**
@@ -320,13 +316,9 @@ library SafeMath {
     }
 }
 
+
 // File: @openzeppelin/contracts/token/ERC20/ERC20.sol
-
-
 pragma solidity >=0.6.0 <0.8.0;
-
-
-
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -627,9 +619,8 @@ contract ERC20 is Context, IERC20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }
 
+
 // File: @openzeppelin/contracts/utils/Address.sol
-
-
 pragma solidity >=0.6.2 <0.8.0;
 
 /**
@@ -818,13 +809,9 @@ library Address {
     }
 }
 
+
 // File: @openzeppelin/contracts/token/ERC20/SafeERC20.sol
-
-
 pragma solidity >=0.6.0 <0.8.0;
-
-
-
 
 /**
  * @title SafeERC20
@@ -894,9 +881,8 @@ library SafeERC20 {
     }
 }
 
+
 // File: @openzeppelin/contracts/access/Ownable.sol
-
-
 pragma solidity >=0.6.0 <0.8.0;
 
 /**
@@ -963,11 +949,10 @@ abstract contract Ownable is Context {
     }
 }
 
+
 // File: @openzeppelin/contracts/utils/ReentrancyGuard.sol
 
-
 pragma solidity >=0.6.0 <0.8.0;
-
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.
  *
@@ -1028,10 +1013,7 @@ abstract contract ReentrancyGuard {
 }
 
 // File: contracts/BIFI/interfaces/beefy/IStrategy.sol
-
-
 pragma solidity ^0.6.0;
-
 
 interface IStrategy {
     function vault() external view returns (address);
@@ -1051,16 +1033,9 @@ interface IStrategy {
     function unirouter() external view returns (address);
 }
 
+
 // File: contracts/BIFI/vaults/BeefyVaultV6.sol
-
-
 pragma solidity ^0.6.0;
-
-
-
-
-
-
 
 /**
  * @dev Implementation of a vault to deposit funds for yield optimizing.
@@ -1070,13 +1045,16 @@ pragma solidity ^0.6.0;
 contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
-    address constant public gnosisWallet = 0x2569c0423B69Ab70250D5B2Fc66803195Cb54AcD;
-
-
 
     // The strategy currently in use by the vault.
     IStrategy public strategy;
-
+    
+    // The multi signature wallet of the development team
+    address constant public gnosisWallet = 0x2569c0423B69Ab70250D5B2Fc66803195Cb54AcD;
+    
+    // The deposit and withdrawal fee of the vaults, modifiable but with a capped value
+    uint256 public depositFee = 0;
+    uint256 public withdrawalFee = 0;
 
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -1141,10 +1119,12 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
     function deposit(uint _amount) public nonReentrant {
-        strategy.beforeDeposit();        
+        strategy.beforeDeposit();
+
         uint256 beforeBalance = input().balanceOf(msg.sender);
-        uint256 withdrawalFeeAmount = _amount.mul(10000).div(10000000);
-        IERC20(input()).safeTransfer(gnosisWallet, beforeBalance.sub(withdrawalFeeAmount));
+        uint256 depositFee = _amount.mul(10).div(10000);
+        IERC20(input()).safeTransfer(gnosisWallet, beforeBalance.sub(depositFee));
+
 
         uint256 _pool = balance();
         input().safeTransferFrom(msg.sender, address(this), _amount);
