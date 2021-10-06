@@ -1053,8 +1053,12 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     address constant public gnosisWallet = 0x2569c0423B69Ab70250D5B2Fc66803195Cb54AcD;
     
     // The deposit and withdrawal fee of the vaults, modifiable but with a capped value
-    uint256 public depositFee = 0;
-    uint256 public withdrawalFee = 0;
+    uint256 public depositFeeBP = 0;
+    uint256 public withdrawalFeeBP = 0;
+
+    // The capped values of the deposit and withdrawal fee
+    uint256 public constant maxDepositFee = 500;
+    uint256 public constant maxWithdrawalFee = 500;
 
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -1076,6 +1080,12 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         strategy = _strategy;
     }
 
+    event deposit (address indexed user, uint256 amount);
+    event withdraw (address indexed user, uint256 amount);
+    event stuckTokensWithdrawn (address indexed token, uint256 amount);
+    event updateDepositFeeBP (uint256 depFee);
+    event updateWithdrawalFeeBP (uint256 withdrawfee);
+    
     function input() public view returns (IERC20) {
         return IERC20(strategy.input());
     }
@@ -1114,6 +1124,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         deposit(input().balanceOf(msg.sender));
     }
 
+
     /**
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
@@ -1121,34 +1132,56 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     function deposit(uint _amount) public nonReentrant {
         strategy.beforeDeposit();
 
-        uint256 beforeBalance = input().balanceOf(msg.sender);
-        uint256 depositFee = _amount.mul(10).div(10000);
-        IERC20(input()).safeTransfer(gnosisWallet, beforeBalance.sub(depositFee));
-
-
+        uint256 depositFee = _amount.mul(depositFeeBP).div(10000);
         uint256 _pool = balance();
-        input().safeTransferFrom(msg.sender, address(this), _amount);
-        earn();
+        
+        input().safeTransferFrom(msg.sender, gnosisWallet, depositFee);
+        input().safeTransferFrom(msg.sender, address(this));
+        
+        _amount.sub(depositFee);   
+        
+        earn(_amount);
+
         uint256 _after = balance();
         _amount = _after.sub(_pool); // Additional check for deflationary tokens
+        
+
+
         uint256 shares = 0;
+        
         if (totalSupply() == 0) {
             shares = _amount;
         } else {
             shares = (_amount.mul(totalSupply())).div(_pool);
         }
+        
         _mint(msg.sender, shares);
+    }
+
+    //
+    function harvest() external {
+        uint256 _prevBal = balance();
+        earn();
+        require(balance() >= _prevBal, "Not profitable");
     }
 
     /**
      * @dev Function to send funds into the strategy and put them to work. It's primarily called
      * by the vault's deposit() function.
      */
-    function earn() public {
+    function earn(uint256 _amount) internal {
+        require (panicStatus() != true, "Already emergency Withdrawn.");
+        
         uint _bal = available();
-        input().safeTransfer(address(strategy), _bal);
+        input().safeTransfer(address(strategy), _bal);  
         strategy.deposit();
     }
+
+    // Checks the strategy for its panic status.
+    function panicStatus() public view returns (bool){
+        strategy.panic();
+    }
+
 
     /**
      * @dev A helper function to call withdraw() with all the sender's funds.
@@ -1190,6 +1223,25 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
 
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
+
+        emit stuckTokensWithdrawn (_token, amount);
     }
+
+    // Adjusts the deposit fee basis points of vaults up to a maximum of 5%.
+    function setDepositFeeBP (uint256 _depositFeeBP) external onlyOwner {
+        require(_depositFeeBP <= maxDepositFee, "Fees too high!");
+        depositFeeBP = _depositFeeBP;
+
+        emit updateDepositFeeBP(_depositFeeBP);
+    }
+
+    // Adjusts the withdrawal fee basis points of vaults up to a maximum of 5%
+    function setWithdrawalFeeBP (uint256 _withdrawalFeeBP) external onlyOwner {
+        require(_withdrawalFeeBP <= maxDepositFee);
+        withdrawalFeeBP = _withdrawalFeeBP;
+
+        emit updateWithdrawalFeeBP(withdrawalFeeBP);
+    }
+
 }
 
