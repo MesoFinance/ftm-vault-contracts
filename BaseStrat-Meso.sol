@@ -1448,7 +1448,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount) = IStakingRewards(masterchef).balanceOf(address(this));
+        (uint256 _amount) = input.balanceOf(masterchef);
         return _amount;
     }
 
