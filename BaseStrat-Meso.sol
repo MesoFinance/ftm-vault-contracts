@@ -1354,6 +1354,8 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         if (wantBal > _amount) {
             wantBal = _amount;
         }
+
+        IERC20(want).safeTransfer(vault, wantBal);
     }
 
     function beforeDeposit() external override {
