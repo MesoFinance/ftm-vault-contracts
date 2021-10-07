@@ -1052,7 +1052,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     IStrategy public strategy;
     
     // The multi signature wallet of the development team
-    address constant public gnosisWallet = 0x2569c0423B69Ab70250D5B2Fc66803195Cb54AcD;
+    address constant public orbisPool = 0x2569c0423B69Ab70250D5B2Fc66803195Cb54AcD;
     
     // The deposit and withdrawal fee of the vaults, modifiable but with a capped value
     uint256 public depositFeeBP = 0;
@@ -1135,7 +1135,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         uint256 depositFee = _amount.mul(depositFeeBP).div(10000);
         uint256 _pool = balance();
         
-        input().safeTransferFrom(msg.sender, gnosisWallet, depositFee);
+        input().safeTransferFrom(msg.sender, orbisPool, depositFee);
         input().safeTransferFrom(msg.sender, address(this), _amount.sub(depositFee));
         
         uint256 _after = balance();
