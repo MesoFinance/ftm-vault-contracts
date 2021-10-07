@@ -1169,7 +1169,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         require(panicStatus() != true, "Already emergency Withdrawn.");
         
         uint16 depositFeeMC = IStrategy.getDepositFee();
-        require(depositFeeMC < 10000, "Third party MC has 100% deposit fees");
+        require(depositFeeMC <= 9000, "Third party MC has up to 90% deposit fees");
 
         input().safeTransfer(address(strategy), _amount);  
         strategy.deposit(_amount);
