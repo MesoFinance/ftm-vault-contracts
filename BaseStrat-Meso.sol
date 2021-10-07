@@ -1279,29 +1279,27 @@ abstract contract FeeManager is StratManager {
 
 pragma solidity ^0.6.0;
 
-contract StrategyLP is StratManager, FeeManager {
+contract BaseMesoStrategyLP is StratManager, FeeManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public output = 0xC168E40227E4ebD8C1caE80F7a55a4F0e6D66C97; // dfyn
-    address constant public usdc=0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174; // USDC;
-    address constant public output2 = 0x16ECCfDbb4eE1A85A33f3A9B21175Cd7Ae753dB4; //route
-    address constant public wmatic = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270; // WMATIC;
-    address constant public input = 0xB0dc320ea9eea823a150763AbB4A7bA8286Cd08B;
+    address constant public output = 0x4D9361A86D038C8adA3db2457608e2275B3E08d4; // meso
+    address constant public usdc=0x04068DA6C83AFCFA0e13ba15A6696662335D5B75; // USDC;    
+    address constant public wftm = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270; // wFTM;
+    address constant public input = 0x0Dd94754C2BC621Ef8De2fd7A9DF2BC5283e9479; // meso-ftm liquidity
 
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address constant public masterchef = 0xe194f2cB4da23B1FB26B41Eb818d25d9FC7367f2; // dfyn Masterchef
+    address constant public masterchef = 0xe194f2cB4da23B1FB26B41Eb818d25d9FC7367f2; // meso Masterchef
     uint256 public poolId;
 
     // Routes
     address[] public outputToUsdcRoute;
     address[] public outputToLp0Route;
-    address[] public outputToLp1Route;
-    address[] public secondOutputToOutputRoute;
+    address[] public outputToLp1Route;    
 
 
     bool public harvestOnDeposit;
@@ -1317,16 +1315,20 @@ contract StrategyLP is StratManager, FeeManager {
 
 
 
+
     constructor() public {
     
-
-        unirouter = 0xA102072A4C07F06EC3B4900FDC4C7B80b6c57429; //dfyn
+        require(input != output, "Meso Strat Error: Input token cannot be the same as output token");
+        
+        unirouter = 0xF491e7B69E4244ad4002BC14e878a34207E38c29; //Spooky
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
+
+        require(input != lpToken0 || input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
     
         outputToUsdcRoute = new address[](3);
         outputToUsdcRoute[0]= output;
-        outputToUsdcRoute[1]= wmatic;
+        outputToUsdcRoute[1]= wftm;
         outputToUsdcRoute[2]= usdc;
 
         
@@ -1337,11 +1339,7 @@ contract StrategyLP is StratManager, FeeManager {
         outputToLp1Route = new address[](2);
         outputToLp1Route[0]= output;
         outputToLp1Route[1]= lpToken1;
-
-
-        secondOutputToOutputRoute = new address[](2);
-        secondOutputToOutputRoute[0] = output2;
-        secondOutputToOutputRoute[1] = output;
+    
 
         _giveAllowances();
     }
@@ -1476,7 +1474,7 @@ contract StrategyLP is StratManager, FeeManager {
     function _giveAllowances() internal {
         IERC20(input).safeApprove(masterchef, uint256(-1));
         IERC20(output).safeApprove(unirouter, uint256(-1));    
-        IERC20(output2).safeApprove(unirouter, uint256(-1));
+        
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, uint256(-1));
@@ -1486,8 +1484,7 @@ contract StrategyLP is StratManager, FeeManager {
 
     function _removeAllowances() internal {
         IERC20(input).safeApprove(masterchef, 0);
-        IERC20(output).safeApprove(unirouter, 0);
-        IERC20(output2).safeApprove(unirouter, 0);
+        IERC20(output).safeApprove(unirouter, 0);    
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
@@ -1504,7 +1501,7 @@ contract StrategyLP is StratManager, FeeManager {
     function outputToLp1() external view returns(address[] memory) {
         return outputToLp1Route;
     }
-    function convertDust() external onlyManager{
+    function convertDust() external onlyManager {
     uint256 lptoken0Dust = IERC20(lpToken0).balanceOf(address(this));
     uint256 lptoken1Dust = IERC20(lpToken1).balanceOf(address(this));
     if (lptoken0Dust>0){
@@ -1518,7 +1515,7 @@ contract StrategyLP is StratManager, FeeManager {
  
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         IERC20(usdc).safeTransfer(strategist, usdcBal);
-    }
+        }
     }
     
 
