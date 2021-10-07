@@ -969,37 +969,17 @@ interface IWrappedNative is IERC20 {
     function deposit() external payable;
     function withdraw(uint wad) external;
 }
+pragma solidity ^0.6.0;
 
-pragma solidity >=0.6.12;
-
-interface IStakingRewards {
-    // Views
-    function lastTimeRewardApplicable() external view returns (uint256);
-
-    function rewardPerToken() external view returns (uint256);
-
-    function earned(address account) external view returns (uint256);
-
-    function getRewardForDuration() external view returns (uint256);
-
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    // Mutative
-
-    function setVestingConfig(bool _setConfig) external;
-
-    function stake(uint256 amount) external;
-
-    function withdraw(uint256 amount) external;
-
-    function getReward() external;
-
-    function exit() external;
+interface IMasterChef {
+    function deposit(uint256 _pid, uint256 _amount) external;
+    function withdraw(uint256 _pid, uint256 _amount) external;
+    function enterStaking(uint256 _amount) external;
+    function leaveStaking(uint256 _amount) external;
+    function pendingGammaPulsar(uint256 _pid, address _user) external view returns (uint256);
+    function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
+    function emergencyWithdraw(uint256 _pid) external;
 }
-
-
 
 
 pragma solidity >=0.6.0 <0.8.0;
@@ -1354,7 +1334,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
         if (_amount > 0 && wantBal > 0) {
-            IStakingRewards(masterchef).stake(wantBal);
+            IMasterChef(masterchef).deposit(poolId, _amount);
         }
     }
 
@@ -1364,7 +1344,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
         if (wantBal < _amount) {
-            IStakingRewards(masterchef).withdraw(_amount.sub(wantBal));
+            IMasterChef(masterchef).withdraw(poolId, _amount.sub(wantBal));
             wantBal = IERC20(input).balanceOf(address(this));
         }
 
@@ -1393,7 +1373,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest() internal {
     
-        IStakingRewards(masterchef).getReward();
+            IMasterChef(masterchef).withdraw(poolId,0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
             if (outputBal > 0) {
                 chargeFees();
@@ -1448,7 +1428,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     // it calculates how much 'want' the strategy has working in the farm.
     function balanceOfPool() public view returns (uint256) {
-        (uint256 _amount) = input.balanceOf(masterchef);
+        (uint256 _amount,) = IMasterChef(masterchef).userInfo(poolId, address(this));
         return _amount;
     }
 
@@ -1460,7 +1440,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     // pauses deposits and withdraws all funds from third party systems.
     function panic() external onlyManager {
         pause();
-        IStakingRewards(masterchef).withdraw(balanceOfPool());
+        IMasterChef(masterchef).emergencyWithdraw(poolId);
         
         panicState = true;
 
