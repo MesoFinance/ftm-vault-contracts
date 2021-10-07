@@ -979,6 +979,7 @@ interface IMasterChef {
     function pendingMeso(uint256 _pid, address _user) external view returns (uint256);
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
+    function poolInfo(uint256 _pid) external view returns (, , , , uint16, );
 }
 
 
@@ -1331,6 +1332,11 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function inputToken() external view returns (IERC20) {
         return IERC20(input);
     } 
+
+    function getDepositFee() external view returns (uint16) {
+        (, , , , uint16 depositFee, ) = IMasterChef.poolInfo(poolId);
+        return depositFee;
+    }
 
     // Puts the funds to work
     function deposit(uint256 _amount) public whenNotPaused {

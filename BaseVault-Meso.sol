@@ -1032,6 +1032,7 @@ interface IStrategy {
     function paused() external view returns (bool);
     function unirouter() external view returns (address);
     function panicStatus() external view returns (bool);
+    function getDepositFee() external view returns (uint16);
 }
 
 
