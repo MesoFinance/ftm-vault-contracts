@@ -1301,7 +1301,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;    
 
-    bool public panicStatus = false;
+    bool public panicState = false;
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
@@ -1329,7 +1329,6 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
 
-    
         outputToUsdcRoute = new address[](3);
         outputToUsdcRoute[0]= output;
         outputToUsdcRoute[1]= wftm;
@@ -1347,10 +1346,10 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     // Puts the funds to work
-    function deposit() public whenNotPaused {
+    function deposit(uint256 _amount) public whenNotPaused {
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
-        if (wantBal > 0) {
+        if (_amount > 0 && wantBal > 0) {
             IStakingRewards(masterchef).stake(wantBal);
         }
     }
@@ -1391,11 +1390,13 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function _harvest() internal {
     
         IStakingRewards(masterchef).getReward();
-        uint outputBal = IERC20(output).balanceOf(address(this));
+        uint256 outputBal = IERC20(output).balanceOf(address(this));
             if (outputBal > 0) {
                 chargeFees();
                 addLiquidity();
-                deposit();
+        
+        uint256 wantBal = IERC20(input).balanceOf(address(this));
+                deposit(wantBal);
             }
             lastHarvest = now;
             emit StratHarvest(msg.sender);
@@ -1451,15 +1452,18 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         emit StratHarvestOnDeposit(_harvestOnDeposit);
     }
 
-
     // pauses deposits and withdraws all funds from third party systems.
     function panic() external onlyManager {
         pause();
         IStakingRewards(masterchef).withdraw(balanceOfPool());
         
-        panicStatus = true;
+        panicState = true;
 
         emit StratPanic(msg.sender);
+    }
+    
+    function panicStatus() external view returns (bool) {
+        return panicState;
     }
 
     function pause() public onlyManager {
@@ -1470,7 +1474,9 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function unpause() external onlyManager {
         _unpause();
         _giveAllowances();
-        deposit();
+        
+        uint256 wantBal = IERC20(input).balanceOf(address(this));
+        deposit(wantBal);
     }
 
     function _giveAllowances() internal {
