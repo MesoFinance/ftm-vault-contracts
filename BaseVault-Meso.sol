@@ -1019,7 +1019,7 @@ interface IStrategy {
     function vault() external view returns (address);
     function input() external view returns (IERC20);
     function beforeDeposit() external;
-    function deposit() external;
+    function deposit(uint256) external;
     function withdraw(uint256) external;
     function balanceOf() external view returns (uint256);
     function balanceOfWant() external view returns (uint256);
@@ -1031,6 +1031,7 @@ interface IStrategy {
     function unpause() external;
     function paused() external view returns (bool);
     function unirouter() external view returns (address);
+    function panicStatus() external view returns (bool);
 }
 
 
@@ -1078,9 +1079,9 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         strategy = _strategy;
     }
 
-    event deposit (address indexed user, uint256 amount);
-    event withdraw (address indexed user, uint256 amount);
-    event stuckTokensWithdrawn (address indexed token, uint256 amount);
+    event UserDeposit (address indexed user, uint256 amount);
+    event UserWithdraw (address indexed user, uint256 amount);
+    event StuckTokensWithdrawn (address indexed token, uint256 amount);
     event updateDepositFeeBP (uint256 depFee);
 
 
@@ -1134,16 +1135,12 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         uint256 _pool = balance();
         
         input().safeTransferFrom(msg.sender, gnosisWallet, depositFee);
-        input().safeTransferFrom(msg.sender, address(this));
+        input().safeTransferFrom(msg.sender, address(this), _amount.sub(depositFee));
         
-        _amount.sub(depositFee);   
+        uint256 _after = balance();
+        _amount = _after.sub(_pool); // Additional check for deflationary tokens   
         
         earn(_amount);
-
-        uint256 _after = balance();
-        _amount = _after.sub(_pool); // Additional check for deflationary tokens
-        
-
 
         uint256 shares = 0;
         
@@ -1159,7 +1156,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     //
     function harvest() external {
         uint256 _prevBal = balance();
-        earn();
+        earn(_prevBal);
         require(balance() >= _prevBal, "Not profitable");
     }
 
@@ -1170,14 +1167,13 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     function earn(uint256 _amount) internal {
         require (panicStatus() != true, "Already emergency Withdrawn.");
         
-        uint _bal = available();
-        input().safeTransfer(address(strategy), _bal);  
-        strategy.deposit();
+        input().safeTransfer(address(strategy), _amount);  
+        strategy.deposit(_amount);
     }
 
     // Checks the strategy for its panic status.
     function panicStatus() public view returns (bool){
-        strategy.panic();
+        strategy.panicStatus();
     }
 
 
@@ -1211,7 +1207,6 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         input().safeTransfer(msg.sender, r);
     }
 
-
     /**
      * @dev Rescues random funds stuck that the strat can't handle.
      * @param _token address of the token to rescue.
@@ -1222,7 +1217,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         uint256 amount = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(msg.sender, amount);
 
-        emit stuckTokensWithdrawn (_token, amount);
+        emit StuckTokensWithdrawn (_token, amount);
     }
 
     // Adjusts the deposit fee basis points of vaults up to a maximum of 5%.
@@ -1234,4 +1229,3 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     }
 
 }
-
