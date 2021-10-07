@@ -969,14 +969,14 @@ interface IWrappedNative is IERC20 {
     function deposit() external payable;
     function withdraw(uint wad) external;
 }
+
+
 pragma solidity ^0.6.0;
 
 interface IMasterChef {
     function deposit(uint256 _pid, uint256 _amount) external;
     function withdraw(uint256 _pid, uint256 _amount) external;
-    function enterStaking(uint256 _amount) external;
-    function leaveStaking(uint256 _amount) external;
-    function pendingGammaPulsar(uint256 _pid, address _user) external view returns (uint256);
+    function pendingMeso(uint256 _pid, address _user) external view returns (uint256);
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
 }
@@ -1153,12 +1153,12 @@ contract StratManager is Ownable, Pausable {
     address public unirouter;
     address public vault;
     address public harvester;
+
     event StratSetHarvester(address indexed _StratSetHarvester);
     event StratSetKeeper(address indexed _StratSetKeeper);
     event StratSetStrategist(address indexed _setStrategist);
     event StratSetVault(address indexed _setVault);
-    
-    
+        
 
     /**
      * @dev Initializes the base strategy.
@@ -1245,8 +1245,8 @@ pragma solidity ^0.6.12;
 abstract contract FeeManager is StratManager {
     uint public STRATEGIST_FEE = 0;
     uint constant public MAX_FEE = 600;
+    
     event feeChange(address indexed  _manager, uint indexed _newFee);
-
     
     function setStrategistFee(uint _fee) external onlyManager{
         require(_fee <= MAX_FEE,"Must be less than MAX_FEE");
@@ -1295,8 +1295,8 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     constructor(
         address _input,
-        address _output
-        
+        address _output,
+        uint256 _pid
         
     ) public {
 
@@ -1304,12 +1304,12 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         
         input = _input;
         output = _output;
-        poolId = 0;
-
+        poolId = _pid;
 
         unirouter = 0xF491e7B69E4244ad4002BC14e878a34207E38c29; //Spooky
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
+
         require(_input != lpToken0 || _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
 
         outputToUsdcRoute = new address[](3);
@@ -1376,15 +1376,16 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     // compounds earnings and charges performance fee
     function _harvest() internal {
     
-            IMasterChef(masterchef).withdraw(poolId,0);
+        IMasterChef(masterchef).withdraw(poolId,0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
             if (outputBal > 0) {
                 chargeFees();
                 addLiquidity();
         
-        uint256 wantBal = IERC20(input).balanceOf(address(this));
+                uint256 wantBal = IERC20(input).balanceOf(address(this));
                 deposit(wantBal);
             }
+            
             lastHarvest = now;
             emit StratHarvest(msg.sender);
     }
@@ -1393,12 +1394,12 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function chargeFees() internal {
 
         if (STRATEGIST_FEE > 0) {
-        uint256 toUsdc = IERC20(output).balanceOf(address(this)).mul(STRATEGIST_FEE).div(10000);
+            uint256 toUsdc = IERC20(output).balanceOf(address(this)).mul(STRATEGIST_FEE).div(10000);
         
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
  
-        uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
-        IERC20(usdc).safeTransfer(strategist, usdcBal);
+            uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
+            IERC20(usdc).safeTransfer(strategist, usdcBal);
         }
     }
 
