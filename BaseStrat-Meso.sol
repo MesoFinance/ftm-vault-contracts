@@ -1263,7 +1263,7 @@ contract StratManager is Ownable, Pausable {
 pragma solidity ^0.6.12;
 
 abstract contract FeeManager is StratManager {
-    uint public STRATEGIST_FEE = 500;
+    uint public STRATEGIST_FEE = 0;
     uint constant public MAX_FEE = 600;
     event feeChange(address indexed  _manager, uint indexed _newFee);
 
@@ -1409,13 +1409,14 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     // performance fees
     function chargeFees() internal {
 
-        
+        if (STRATEGIST_FEE > 0) {
         uint256 toUsdc = IERC20(output).balanceOf(address(this)).mul(STRATEGIST_FEE).div(10000);
         
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
  
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         IERC20(usdc).safeTransfer(strategist, usdcBal);
+        }
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
