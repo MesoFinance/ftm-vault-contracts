@@ -1054,11 +1054,9 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     
     // The deposit and withdrawal fee of the vaults, modifiable but with a capped value
     uint256 public depositFeeBP = 0;
-    uint256 public withdrawalFeeBP = 0;
 
     // The capped values of the deposit and withdrawal fee
     uint256 public constant maxDepositFee = 500;
-    uint256 public constant maxWithdrawalFee = 500;
 
     /**
      * @dev Sets the value of {token} to the token that the vault will
@@ -1084,8 +1082,8 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
     event withdraw (address indexed user, uint256 amount);
     event stuckTokensWithdrawn (address indexed token, uint256 amount);
     event updateDepositFeeBP (uint256 depFee);
-    event updateWithdrawalFeeBP (uint256 withdrawfee);
-    
+
+
     function input() public view returns (IERC20) {
         return IERC20(strategy.input());
     }
@@ -1233,14 +1231,6 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         depositFeeBP = _depositFeeBP;
 
         emit updateDepositFeeBP(_depositFeeBP);
-    }
-
-    // Adjusts the withdrawal fee basis points of vaults up to a maximum of 5%
-    function setWithdrawalFeeBP (uint256 _withdrawalFeeBP) external onlyOwner {
-        require(_withdrawalFeeBP <= maxDepositFee);
-        withdrawalFeeBP = _withdrawalFeeBP;
-
-        emit updateWithdrawalFeeBP(withdrawalFeeBP);
     }
 
 }
