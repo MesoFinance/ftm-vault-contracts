@@ -1284,16 +1284,16 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public output = 0x4D9361A86D038C8adA3db2457608e2275B3E08d4; // meso
-    address constant public usdc=0x04068DA6C83AFCFA0e13ba15A6696662335D5B75; // USDC;    
-    address constant public wftm = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270; // wFTM;
-    address constant public input = 0x0Dd94754C2BC621Ef8De2fd7A9DF2BC5283e9479; // meso-ftm liquidity
-
+    address public input; // Token used to stake in the vault
+    address public output; // Token rewarded by the delegate Masterchef
+    address constant public usdc = 0x04068DA6C83AFCFA0e13ba15A6696662335D5B75; // USDC;    
+    address constant public wftm = 0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83; // wFTM;
+    
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
-    address constant public masterchef = 0xe194f2cB4da23B1FB26B41Eb818d25d9FC7367f2; // meso Masterchef
+    address constant public masterchef = 0x30b65159dB82eFCf8CEde9861bc6B85336310EB2; // Meso Masterchef
     uint256 public poolId;
 
     // Routes
@@ -1301,7 +1301,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;    
 
-
+    bool public panicStatus = false;
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
 
@@ -1313,25 +1313,28 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     event StratHarvestOnDeposit(bool indexed _harvestOnDeposit);
     event StratPanic(address indexed _panic);
 
-
-
-
-    constructor() public {
-    
-        require(input != output, "Meso Strat Error: Input token cannot be the same as output token");
+    constructor(
+        address _input,
+        address _output
         
+    ) public {
+
+        require(_input != _output, "Meso Strat Error: Input token cannot be the same as output token");
+        require(_input != lpToken0 || _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
+        
+        input = _input;
+        output = _output;
+
         unirouter = 0xF491e7B69E4244ad4002BC14e878a34207E38c29; //Spooky
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
 
-        require(input != lpToken0 || input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
     
         outputToUsdcRoute = new address[](3);
         outputToUsdcRoute[0]= output;
         outputToUsdcRoute[1]= wftm;
         outputToUsdcRoute[2]= usdc;
 
-        
         outputToLp0Route = new address[](2);
         outputToLp0Route[0]= output;
         outputToLp0Route[1]= lpToken0;
@@ -1340,11 +1343,10 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         outputToLp1Route[0]= output;
         outputToLp1Route[1]= lpToken1;
     
-
         _giveAllowances();
     }
 
-    // puts the funds to work
+    // Puts the funds to work
     function deposit() public whenNotPaused {
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
@@ -1454,20 +1456,20 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function panic() external onlyManager {
         pause();
         IStakingRewards(masterchef).withdraw(balanceOfPool());
+        
+        panicStatus = true;
+
         emit StratPanic(msg.sender);
     }
 
     function pause() public onlyManager {
         _pause();
-
         _removeAllowances();
     }
 
     function unpause() external onlyManager {
         _unpause();
-
         _giveAllowances();
-
         deposit();
     }
 
@@ -1501,6 +1503,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function outputToLp1() external view returns(address[] memory) {
         return outputToLp1Route;
     }
+
     function convertDust() external onlyManager {
     uint256 lptoken0Dust = IERC20(lpToken0).balanceOf(address(this));
     uint256 lptoken1Dust = IERC20(lpToken1).balanceOf(address(this));
