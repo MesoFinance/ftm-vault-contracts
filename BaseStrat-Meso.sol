@@ -1297,12 +1297,15 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         address _input,
         address _output
         
+        
     ) public {
 
         require(_input != _output, "Meso Strat Error: Input token cannot be the same as output token");
         
         input = _input;
         output = _output;
+        poolId = 0;
+
 
         unirouter = 0xF491e7B69E4244ad4002BC14e878a34207E38c29; //Spooky
         lpToken0 = IUniswapV2Pair(input).token0();
