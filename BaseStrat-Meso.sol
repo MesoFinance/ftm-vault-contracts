@@ -1504,14 +1504,15 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function convertDust() external onlyManager {
     uint256 lptoken0Dust = IERC20(lpToken0).balanceOf(address(this));
     uint256 lptoken1Dust = IERC20(lpToken1).balanceOf(address(this));
+    
     if (lptoken0Dust>0){
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(lptoken0Dust,0, outputToUsdcRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(lptoken0Dust,0, outputToUsdcRoute, address(this), now);
  
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         IERC20(usdc).safeTransfer(strategist, usdcBal);
     }
         if (lptoken1Dust>0){
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(lptoken1Dust,0, outputToUsdcRoute, address(this), now);
+        IUniswapRouterETH(unirouter).swapExactTokensForTokens(lptoken1Dust,0, outputToUsdcRoute, address(this), now);
  
         uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
         IERC20(usdc).safeTransfer(strategist, usdcBal);
