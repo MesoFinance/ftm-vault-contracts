@@ -1320,7 +1320,6 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     ) public {
 
         require(_input != _output, "Meso Strat Error: Input token cannot be the same as output token");
-        require(_input != lpToken0 || _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
         
         input = _input;
         output = _output;
@@ -1328,6 +1327,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         unirouter = 0xF491e7B69E4244ad4002BC14e878a34207E38c29; //Spooky
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
+        require(_input != lpToken0 || _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
 
         outputToUsdcRoute = new address[](3);
         outputToUsdcRoute[0]= output;
@@ -1344,6 +1344,10 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     
         _giveAllowances();
     }
+
+    function inputToken() external view returns (IERC20) {
+        return IERC20(input);
+    } 
 
     // Puts the funds to work
     function deposit(uint256 _amount) public whenNotPaused {

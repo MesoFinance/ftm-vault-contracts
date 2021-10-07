@@ -1017,7 +1017,7 @@ pragma solidity ^0.6.0;
 
 interface IStrategy {
     function vault() external view returns (address);
-    function input() external view returns (IERC20);
+    function inputToken() external view returns (IERC20);
     function beforeDeposit() external;
     function deposit(uint256) external;
     function withdraw(uint256) external;
@@ -1086,7 +1086,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
 
 
     function input() public view returns (IERC20) {
-        return IERC20(strategy.input());
+        return IERC20(strategy.inputToken());
     }
 
     /**
