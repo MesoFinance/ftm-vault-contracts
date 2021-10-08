@@ -1408,7 +1408,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
             uint256 toUsdc = IERC20(output).balanceOf(address(this)).mul(STRATEGIST_FEE).div(10000);
         
             IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toUsdc,0, outputToUsdcRoute, strategist, now);
-            
+
         }
     }
 
@@ -1447,6 +1447,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     function setHarvestOnDeposit(bool _harvestOnDeposit) external onlyManager {
         harvestOnDeposit = _harvestOnDeposit;
+        
         emit StratHarvestOnDeposit(_harvestOnDeposit);
     }
 
