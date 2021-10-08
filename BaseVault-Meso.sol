@@ -1012,7 +1012,7 @@ abstract contract ReentrancyGuard {
     }
 }
 
-// File: contracts/BIFI/interfaces/beefy/IStrategy.sol
+
 pragma solidity ^0.6.0;
 
 interface IStrategy {
@@ -1036,7 +1036,6 @@ interface IStrategy {
 }
 
 
-// File: contracts/BIFI/vaults/BeefyVaultV6.sol
 pragma solidity ^0.6.0;
 
 /**
@@ -1044,7 +1043,7 @@ pragma solidity ^0.6.0;
  * This is the contract that receives funds and that users interface with.
  * The yield optimizing strategy itself is implemented in a separate 'Strategy.sol' contract.
  */
-contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
+contract MesoVault is ERC20, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -1142,6 +1141,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         _amount = _after.sub(_pool); // Additional check for deflationary tokens   
         
         earn(_amount);
+        _amount = balance().sub(_pool);
 
         uint256 shares = 0;
         
@@ -1152,13 +1152,8 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         }
         
         _mint(msg.sender, shares);
-    }
 
-    //
-    function harvest() external {
-        uint256 _prevBal = balance();
-        earn(_prevBal);
-        require(balance() >= _prevBal, "Not profitable");
+        emit UserDeposit (msg.sender, _amount);
     }
 
     /**
@@ -1169,7 +1164,7 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         require(panicStatus() != true, "Already emergency Withdrawn.");
         
         uint16 depositFeeMC = IStrategy.getDepositFee();
-        require(depositFeeMC <= 9000, "Third party MC has up to 90% deposit fees");
+        require(depositFeeMC <= 2000, "Third party MC has over 20% deposit fees");
 
         input().safeTransfer(address(strategy), _amount);  
         strategy.deposit(_amount);
@@ -1209,6 +1204,8 @@ contract BeefyVaultV6 is ERC20, Ownable, ReentrancyGuard {
         }
 
         input().safeTransfer(msg.sender, r);
+
+        emit UserWithdraw (msg.sender, r);
     }
 
     /**
