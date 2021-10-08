@@ -1280,7 +1280,9 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     // Routes
     address[] public outputToUsdcRoute;
     address[] public outputToLp0Route;
-    address[] public outputToLp1Route;    
+    address[] public outputToLp1Route;
+    address[] public lpToken0DustToUsdcRoute;
+    address[] public lpToken1DustToUsdcRoute; 
 
     bool public panicState = false;
     bool public harvestOnDeposit;
@@ -1325,6 +1327,16 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         outputToLp1Route = new address[](2);
         outputToLp1Route[0]= output;
         outputToLp1Route[1]= lpToken1;
+
+        lpToken0DustToUsdcRoute = new address[](3);
+        lpToken0DustToUsdcRoute[0] = lpToken0;
+        lpToken0DustToUsdcRoute[1] = wftm;
+        lpToken0DustToUsdcRoute[2] = usdc;
+
+        lpToken1DustToUsdcRoute = new address[](3);
+        lpToken1DustToUsdcRoute[0] = lpToken1;
+        lpToken1DustToUsdcRoute[1] = wftm;
+        lpToken1DustToUsdcRoute[2] = usdc;
     
         _giveAllowances();
     }
@@ -1511,21 +1523,27 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     function convertDust() external onlyManager {
-    uint256 lptoken0Dust = IERC20(lpToken0).balanceOf(address(this));
-    uint256 lptoken1Dust = IERC20(lpToken1).balanceOf(address(this));
+    uint256 lpToken0Dust = IERC20(lpToken0).balanceOf(address(this));
+    uint256 lpToken1Dust = IERC20(lpToken1).balanceOf(address(this));
     
-    if (lptoken0Dust>0){
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(lptoken0Dust,0, outputToUsdcRoute, address(this), now);
- 
-        uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
-        IERC20(usdc).safeTransfer(strategist, usdcBal);
+    if (lpToken0Dust>0){
+        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            lpToken0Dust,
+            0,
+            lpToken0DustToUsdcRoute,
+            strategist,
+            now
+        );   
     }
-        if (lptoken1Dust>0){
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(lptoken1Dust,0, outputToUsdcRoute, address(this), now);
- 
-        uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
-        IERC20(usdc).safeTransfer(strategist, usdcBal);
-        }
+        
+    if (lpToken1Dust>0){
+        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+            lpToken1Dust,
+            0,
+            lpToken1DustToUsdcRoute,
+            strategist,
+            now
+        );
     }
     
 
