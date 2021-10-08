@@ -1419,11 +1419,11 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         uint256 outputHalf = IERC20(output).balanceOf(address(this)).div(2);
 
         if (lpToken0 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf,0, outputToLp0Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf,0, outputToLp0Route, address(this), now);
         }
 
         if (lpToken1 != output) {
-            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(outputHalf,0, outputToLp1Route, address(this), now);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(outputHalf,0, outputToLp1Route, address(this), now);
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
