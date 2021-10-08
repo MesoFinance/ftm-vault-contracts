@@ -1407,10 +1407,8 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         if (STRATEGIST_FEE > 0) {
             uint256 toUsdc = IERC20(output).balanceOf(address(this)).mul(STRATEGIST_FEE).div(10000);
         
-            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toUsdc,0, outputToUsdcRoute, address(this), now);
- 
-            uint256 usdcBal = IERC20(usdc).balanceOf(address(this));
-            IERC20(usdc).safeTransfer(strategist, usdcBal);
+            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(toUsdc,0, outputToUsdcRoute, strategist, now);
+            
         }
     }
 
