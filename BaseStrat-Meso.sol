@@ -1396,8 +1396,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     // compounds earnings and charges performance fee
-    function _harvest() internal {
-        require(panicState == false, "Meso Strat Error: Strategy is in panic mode.");
+    function _harvest() internal whenNotPaused {
         
         IMasterChef(masterchef).deposit(poolId,0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
