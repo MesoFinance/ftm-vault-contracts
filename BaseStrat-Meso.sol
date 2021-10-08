@@ -1311,7 +1311,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
 
-        require(_input != lpToken0 || _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
+        require(_input != lpToken0 && _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
 
         outputToUsdcRoute = new address[](3);
         outputToUsdcRoute[0]= output;
@@ -1340,6 +1340,8 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     // Puts the funds to work
     function deposit(uint256 _amount) public whenNotPaused {
+        require(msg.sender == vault, "Meso Strat Error: Unauthorized access.");
+        require(panicState == false, "Meso Strat Error: Strategy is in panic mode.");
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
         if (_amount > 0 && wantBal > 0) {
@@ -1383,8 +1385,9 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     // compounds earnings and charges performance fee
     function _harvest() internal {
-    
-        IMasterChef(masterchef).withdraw(poolId,0);
+        require(panicState == false, "Meso Strat Error: Strategy is in panic mode.");
+        
+        IMasterChef(masterchef).deposit(poolId,0);
         uint256 outputBal = IERC20(output).balanceOf(address(this));
             if (outputBal > 0) {
                 chargeFees();
@@ -1469,6 +1472,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     function unpause() external onlyManager {
+        require(panicState == false, "Meso Strat Error: Strategy is in panic mode.");
         _unpause();
         _giveAllowances();
         
