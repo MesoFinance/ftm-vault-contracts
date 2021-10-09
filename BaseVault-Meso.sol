@@ -1166,11 +1166,10 @@ contract MesoVault is ERC20, Ownable, ReentrancyGuard {
         uint16 depositFeeMC = strategy.getDepositFee();
         require(depositFeeMC <= 2000, "Third party MC has over 20% deposit fees");
 
-        IERC20 inputt = input();
-
-        uint256 before = inputt.balanceOf(address(strategy));
-        inputt.safeTransfer(address(strategy), _amount);
-        _amount = inputt.balanceOf(address(strategy)).sub(before);
+        uint256 before = input().balanceOf(address(strategy));
+        input().safeTransfer(address(strategy), _amount);
+        
+        _amount = input().balanceOf(address(strategy)).sub(before);
         strategy.deposit(_amount);
     }
 

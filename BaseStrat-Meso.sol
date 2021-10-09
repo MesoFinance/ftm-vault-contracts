@@ -976,14 +976,14 @@ pragma solidity ^0.6.0;
 interface IMasterChef {
     function deposit(uint256 _pid, uint256 _amount) external;
     function withdraw(uint256 _pid, uint256 _amount) external;
-    function pendingMeso(uint256 _pid, address _user) external view returns (uint256);
+    function pendingBOO(uint256 _pid, address _user) external view returns (uint256);
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
     function poolInfo(uint256 _pid) external view returns (
         address lpToken, 
         uint256 allocPoint, 
-        uint256 lastRewardBlock, 
-        uint256 accRewardPerShare, 
+        uint256 lastRewardTime, 
+        uint256 accBOOPerShare 
         uint16 depositFeeBP,
         uint256 lpSupply
     );
@@ -1281,7 +1281,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     address public lpToken1;
 
     // Third party contracts
-    address constant public masterchef = 0x30b65159dB82eFCf8CEde9861bc6B85336310EB2; // Meso Masterchef
+    address public constant masterchef = 0x30b65159dB82eFCf8CEde9861bc6B85336310EB2; // Meso Masterchef
     uint256 public poolId;
 
     // Routes
@@ -1310,7 +1310,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         
     ) public {
 
-        require(_input != _output, "Meso Strat Error: Input token cannot be the same as output token");
+        require(_input != _output, "Meso Strat Error (Constructor): Input token cannot be the same as output token");
         
         input = _input;
         output = _output;
@@ -1320,7 +1320,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
         lpToken0 = IUniswapV2Pair(input).token0();
         lpToken1 = IUniswapV2Pair(input).token1();
 
-        require(_input != lpToken0 && _input != lpToken1, "Meso Strat Error: Input token cannot be the same as any of the lpTokens");
+        require(_input != lpToken0 && _input != lpToken1, "Meso Strat Error (Constructor): Input token cannot be the same as any of the lpTokens");
 
         outputToUsdcRoute = new address[](3);
         outputToUsdcRoute[0]= output;
@@ -1363,7 +1363,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
             msg.sender == vault || 
             msg.sender == address(this) ||
             msg.sender == harvester,
-            "Meso Strat Error: Unauthorized access. Only the vault, harvester, or this contract can access this."
+            "Meso Strat Error (Deposit): Unauthorized access. Only the vault, harvester, or this contract can access this."
         );
 
         uint256 wantBal = IERC20(input).balanceOf(address(this));
@@ -1374,7 +1374,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     function withdraw(uint256 _amount) external {
-        require(msg.sender == vault, "Meso Strat Error: Unauthorized Access. Only the vault can access this.");
+        require(msg.sender == vault, "Meso Strat Error (Withdraw): Unauthorized Access. Only the vault can access this.");
 
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
@@ -1392,7 +1392,12 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            require(msg.sender == vault, "Meso Strat Error: Unauthorized Access. Only the vault can access this.");
+            require(
+            msg.sender == vault || 
+            msg.sender == address(this) ||
+            msg.sender == harvester,
+            "Meso Strat Error (Before Deposit): Unauthorized access. Only the vault, harvester, or this contract can access this."
+        );
             _harvest();
         }
     }
@@ -1494,7 +1499,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     function unpause() external onlyManager {
-        require(panicState == false, "Meso Strat Error: Strategy is in panic mode.");
+        require(panicState == false, "Meso Strat Error (Unpause): Strategy is in panic mode.");
         _unpause();
         _giveAllowances();
         
