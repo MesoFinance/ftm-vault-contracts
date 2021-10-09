@@ -1360,7 +1360,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     // Puts the funds to work
     function deposit(uint256 _amount) public whenNotPaused {
         require(msg.sender == vault, "Meso Strat Error: Unauthorized access.");
-        require(panicState == false, "Meso Strat Error: Strategy is in panic mode.");
+
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
         if (_amount > 0 && wantBal > 0) {
