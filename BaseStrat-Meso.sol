@@ -1178,25 +1178,25 @@ contract StratManager is Ownable, Pausable {
     
     // checks that caller is either owner or keeper.
     modifier onlyManager() {
-        require(msg.sender == owner() || msg.sender == keeper, "!manager");
+        require(msg.sender == owner() || msg.sender == keeper, "Meso Strat Error: Unauthorized access. Only the manager can access this.");
         _;
     }
 
     // verifies that the caller is not a contract.
     modifier onlyEOA() {
-        require(msg.sender == tx.origin, "!EOA");
+        require(msg.sender == tx.origin, "Meso Strat Error: Unauthorized access. Only EOAs can access this.");
         _;
     }
 
     // Modifier for harvester only functions.
     modifier onlyHarvester() {
-        require(msg.sender == harvester, "!Harvester");
+        require(msg.sender == harvester, "Meso Strat Error: Unauthorized access. Only the harvester can access this.");
         _;
     }
 
     // Function to set the contract address for the caller of the harvest function
     function setHarvester(address _harvester) external onlyManager {
-        require(_harvester != address(0), "Harvester cannot be zero address");
+        require(_harvester != address(0), "Meso Strat Error: Harvester cannot be zero address");
         harvester = _harvester;
         emit StratSetHarvester(_harvester);
     }
@@ -1207,7 +1207,7 @@ contract StratManager is Ownable, Pausable {
      * @param _keeper new keeper address.
      */
     function setKeeper(address _keeper) external onlyManager {
-        require(_keeper != address(0), "Keeper cannot be zero address");
+        require(_keeper != address(0), "Meso Strat Error: Keeper cannot be zero address");
         keeper = _keeper;
         emit StratSetKeeper(_keeper);
 
@@ -1221,7 +1221,7 @@ contract StratManager is Ownable, Pausable {
 
         //Requiring this as there are transfer functions attached to strategist.
         //Transferring to the zero address breaks the transfer function.    
-        require(_strategist != address(0), "Strategist cannot be the zero address");
+        require(_strategist != address(0), "Meso Strat Error: Strategist cannot be the zero address");
         strategist = _strategist;
         emit StratSetStrategist(_strategist);
     }
@@ -1233,8 +1233,8 @@ contract StratManager is Ownable, Pausable {
      * @param _vault new vault address.
      */
     function setVault(address _vault) external onlyOwner {
-        require(_vault != address(0), "Vault cannot be the zero address");
-        require(vault == address(0), "Vault already initialized");
+        require(_vault != address(0), "Meso Strat Error: Vault cannot be the zero address");
+        require(vault == address(0), "Meso Strat Error: Vault already initialized");
         vault = _vault;
         emit StratSetVault(_vault);
     }
@@ -1359,7 +1359,11 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     // Puts the funds to work
     function deposit(uint256 _amount) public whenNotPaused {
-        require(msg.sender == vault, "Meso Strat Error: Unauthorized access.");
+        require(
+            msg.sender == vault || 
+            msg.sender == address(this),
+            "Meso Strat Error: Unauthorized access. Only the vault or this contract can access this."
+        );
 
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
@@ -1369,7 +1373,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     function withdraw(uint256 _amount) external {
-        require(msg.sender == vault, "!vault");
+        require(msg.sender == vault, "Meso Strat Error: Unauthorized Access. Only the vault can access this.");
 
         uint256 wantBal = IERC20(input).balanceOf(address(this));
 
@@ -1387,7 +1391,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
 
     function beforeDeposit() external override {
         if (harvestOnDeposit) {
-            require(msg.sender == vault, "!vault");
+            require(msg.sender == vault, "Meso Strat Error: Unauthorized Access. Only the vault can access this.");
             _harvest();
         }
     }
