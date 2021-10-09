@@ -979,7 +979,14 @@ interface IMasterChef {
     function pendingMeso(uint256 _pid, address _user) external view returns (uint256);
     function userInfo(uint256 _pid, address _user) external view returns (uint256, uint256);
     function emergencyWithdraw(uint256 _pid) external;
-    function poolInfo(uint256 _pid) external view returns (, , , , uint16, );
+    function poolInfo(uint256 _pid) external view returns (
+        address lpToken, 
+        uint256 allocPoint, 
+        uint256 lastRewardBlock, 
+        uint256 accRewardPerShare, 
+        uint16 depositFeeBP,
+        uint256 lpSupply
+    );
 }
 
 
@@ -1346,7 +1353,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     } 
 
     function getDepositFee() external view returns (uint16) {
-        (, , , , uint16 depositFee, ) = IMasterChef.poolInfo(poolId);
+        (, , , , uint16 depositFee, ) = IMasterChef(masterchef).poolInfo(poolId);
         return depositFee;
     }
 
@@ -1375,7 +1382,7 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
             wantBal = _amount;
         }
 
-        IERC20(want).safeTransfer(vault, wantBal);
+        IERC20(input).safeTransfer(vault, wantBal);
     }
 
     function beforeDeposit() external override {
@@ -1522,28 +1529,27 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     }
 
     function convertDust() external onlyManager {
-    uint256 lpToken0Dust = IERC20(lpToken0).balanceOf(address(this));
-    uint256 lpToken1Dust = IERC20(lpToken1).balanceOf(address(this));
+        uint256 lpToken0Dust = IERC20(lpToken0).balanceOf(address(this));
+        uint256 lpToken1Dust = IERC20(lpToken1).balanceOf(address(this));
     
-    if (lpToken0Dust>0){
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            lpToken0Dust,
-            0,
-            lpToken0DustToUsdcRoute,
-            strategist,
-            now
-        );   
-    }
+        if (lpToken0Dust>0){
+            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                lpToken0Dust,
+                0,
+                lpToken0DustToUsdcRoute,
+                strategist,
+                now
+            );   
+        }
         
-    if (lpToken1Dust>0){
-        IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            lpToken1Dust,
-            0,
-            lpToken1DustToUsdcRoute,
-            strategist,
-            now
-        );
+        if (lpToken1Dust>0){
+            IUniswapRouterETH(unirouter).swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                lpToken1Dust,
+                0,
+                lpToken1DustToUsdcRoute,
+                strategist,
+                now
+            );
+        }
     }
-    
-
 }
