@@ -1361,8 +1361,9 @@ contract BaseMesoStrategyLP is StratManager, FeeManager {
     function deposit(uint256 _amount) public whenNotPaused {
         require(
             msg.sender == vault || 
-            msg.sender == address(this),
-            "Meso Strat Error: Unauthorized access. Only the vault or this contract can access this."
+            msg.sender == address(this) ||
+            msg.sender == harvester,
+            "Meso Strat Error: Unauthorized access. Only the vault, harvester, or this contract can access this."
         );
 
         uint256 wantBal = IERC20(input).balanceOf(address(this));
