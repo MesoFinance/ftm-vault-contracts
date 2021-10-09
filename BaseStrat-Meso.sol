@@ -983,7 +983,7 @@ interface IMasterChef {
         address lpToken, 
         uint256 allocPoint, 
         uint256 lastRewardTime, 
-        uint256 accBOOPerShare 
+        uint256 accBOOPerShare, 
         uint16 depositFeeBP,
         uint256 lpSupply
     );
